@@ -1,14 +1,14 @@
 #!/usr/bin/env sh
 
 # /usr/local/bin/ryno.sh
-# =========================================================================
+# =============================================================================
 # Title: 		ryno.sh
 # Description: 	Periodically check for internet access and restart
 #				the pfSense WAN interface if a connection attempt fails.
 # Author: 		makkoryn (github.com/makkoryn)
 # Date: 		2026-07-02
 # Version: 		0.2.0
-# =========================================================================
+# =============================================================================
 
 # Init global variables
 WAN_INTERFACE="em0"
@@ -56,9 +56,10 @@ main(){
 			sleep 1
 		fi
 		# We track how many times the system fails to obtain a new DHCP Lease.
-		# After 6 attempts (approx. 1 hour down time by default), we assume ISP is up, but dhclient isn't working, and reboot the system.
+		# After 6 attempts (approx. 1 hour down time by default), assume ISP is
+		# up, but dhclient isn't working, and reboot the system.
 		if $FAIL_TRACKER -ge 6; then
-			echo "[ryno.sh] | FAIL | The system has failed to obtain a new DHCP Lease. Rebooting..." | logger
+			send_to_log "[ryno.sh] | FAIL | The system has failed to obtain a new DHCP Lease. Rebooting..."
 			FAIL_TRACKER=0
 			shutdown -r now
 		fi
