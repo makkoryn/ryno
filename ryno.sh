@@ -15,10 +15,6 @@ WAN_INTERFACE="em0"
 SLEEP_TIMER="10m"
 fail_tracker=0
 
-fail_state(){
-	shutdown -r now
-}
-
 while true;
 do 
 	# Check if we can connect to Quad9 DNS (9.9.9.9) on port 53
@@ -30,28 +26,34 @@ do
 	else
 		# Log failure attempt
 		echo "[ryno.sh] | FAIL | WAN interface ($WAN_INTERFACE) unable to connect to 9.9.9.9:53" | logger
-		# Cycle the WAN interface
-		if ifconfig $WAN_INTERFACE down; sleep 2; ifconfig $WAN_INTERFACE up; sleep 2; then
-			echo "[ryno.sh] | SUCCESS | WAN interface ($WAN_INTERFACE) state has been cycled. Current state: UP" | logger
-			# Request a new DHCP Lease
-			if dhclient $WAN_INTERFACE; then
-				echo "[ryno.sh] | SUCCESS | New DHCP Lease requested on WAN interface ($WAN_INTERFACE)" | logger
-				sleep 1
-			else
-				echo "[ryno.sh] | FAIL | Failed to request a new DHCP Lease on WAN interface ($WAN_INTERFACE). Check physical connection?" | logger
-				fail_tracker=$($fail_tracker + 1)
-			fi
+		sleep 1
+		# Bring WAN interface down
+		echo "[ryno.sh] | INFO | Bringing WAN interface ($WAN_INTERFACE) down!" | logger
+		ifconfig $WAN_INTERFACE down
+		sleep 1
+		# Clear existing leases
+		echo "[ryno.sh] | INFO | Removing existing dhclient leases..." | logger
+		rm /var/db/dhclient.leases.*
+		sleep 1
+		# Bring WAN interface up
+		echo "[ryno.sh] | INFO | Bringing WAN interface ($WAN_INTERFACE) up!" | logger
+		ifconfig $WAN_INTERFACE up
+		sleep 1
+		# Request a new DHCP Lease
+		if dhclient -cf /var/etc/dhclient_wan.conf $WAN_INTERFACE; then
+			echo "[ryno.sh] | SUCCESS | New DHCP Lease requested on WAN interface ($WAN_INTERFACE)" | logger
 		else
-			echo "[ryno.sh] | FAIL | Interacting with WAN interface ($WAN_INTERFACE) failed. Rebooting..." | logger
-			fail_state
+			echo "[ryno.sh] | FAIL | Failed to request a new DHCP Lease on WAN interface ($WAN_INTERFACE). Check physical connection?" | logger
+			fail_tracker=$($fail_tracker + 1)
 		fi
+		sleep 1
 	fi
 	# We track how many times the system fails to obtain a new DHCP Lease.
 	# After 6 attempts (approx. 1 hour down time by default), we assume ISP is up, but dhclient isn't working, and reboot the system.
 	if $fail_tracker -ge 6; then
 		echo "[ryno.sh] | FAIL | The system has failed to obtain a new DHCP Lease. Rebooting..." | logger
 		fail_tracker=0
-		fail_state
+		shutdown -r now
 	fi
 	# Wait before trying again (default: 10 minutes)
 	sleep $SLEEP_TIMER
