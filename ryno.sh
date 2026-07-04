@@ -14,6 +14,12 @@
 WAN_INTERFACE="em0"
 SLEEP_TIMER="10m"
 fail_tracker=0
+log_message=""
+
+send_to_log(){
+	log_message=$1
+	logger "$log_message"
+}
 
 while true;
 do 
@@ -21,29 +27,29 @@ do
 	# If we are successful, we're online
 	if nc -z -n -v -w 3 9.9.9.9 53 2>&1 | grep succeeded; then
 		# Log attempt as successful
-		echo "[ryno.sh] | SUCCESS | WAN interface ($WAN_INTERFACE) connected to 9.9.9.9:53" | logger
+		send_to_log "[ryno.sh] | SUCCESS | WAN interface ($WAN_INTERFACE) connected to 9.9.9.9:53"
 	# If we can't, assume we're offline
 	else
 		# Log failure attempt
-		echo "[ryno.sh] | FAIL | WAN interface ($WAN_INTERFACE) unable to connect to 9.9.9.9:53" | logger
+		send_to_log "[ryno.sh] | FAIL | WAN interface ($WAN_INTERFACE) unable to connect to 9.9.9.9:53"
 		sleep 1
 		# Bring WAN interface down
-		echo "[ryno.sh] | INFO | Bringing WAN interface ($WAN_INTERFACE) down!" | logger
+		send_to_log "[ryno.sh] | INFO | Bringing WAN interface ($WAN_INTERFACE) down!"
 		ifconfig $WAN_INTERFACE down
 		sleep 1
 		# Clear existing leases
-		echo "[ryno.sh] | INFO | Removing existing dhclient leases..." | logger
+		send_to_log "[ryno.sh] | INFO | Removing existing dhclient leases..."
 		rm /var/db/dhclient.leases.*
 		sleep 1
 		# Bring WAN interface up
-		echo "[ryno.sh] | INFO | Bringing WAN interface ($WAN_INTERFACE) up!" | logger
+		send_to_log "[ryno.sh] | INFO | Bringing WAN interface ($WAN_INTERFACE) up!"
 		ifconfig $WAN_INTERFACE up
 		sleep 1
 		# Request a new DHCP Lease
 		if dhclient -cf /var/etc/dhclient_wan.conf $WAN_INTERFACE; then
-			echo "[ryno.sh] | SUCCESS | New DHCP Lease requested on WAN interface ($WAN_INTERFACE)" | logger
+			send_to_log "[ryno.sh] | SUCCESS | New DHCP Lease requested on WAN interface ($WAN_INTERFACE)"
 		else
-			echo "[ryno.sh] | FAIL | Failed to request a new DHCP Lease on WAN interface ($WAN_INTERFACE). Check physical connection?" | logger
+			send_to_log "[ryno.sh] | FAIL | Failed to request a new DHCP Lease on WAN interface ($WAN_INTERFACE). Check physical connection?"
 			fail_tracker=$($fail_tracker + 1)
 		fi
 		sleep 1
