@@ -14,11 +14,10 @@
 WAN_INTERFACE="em0"
 SLEEP_TIMER="10m"
 FAIL_TRACKER=0
-LOG_MESSAGE=""
 
 send_to_log(){
-	LOG_MESSAGE=$1
-	logger "$LOG_MESSAGE"
+	log_message=$1
+	logger "$log_message"
 }
 
 main(){
